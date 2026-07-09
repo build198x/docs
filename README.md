@@ -1,17 +1,19 @@
 # Build198x documentation
 
-Documentation for [Build198x](https://github.com/build198x), the 198x family's build-tools pipeline (asset conversion, data packing, media mastering).
+Documentation for [Build198x](https://github.com/build198x), the 198x family build-tools pipeline for asset conversion, data packing, and media mastering.
 
-Build198x is **decided but not yet started** — demand-gated — so this repo is a placeholder until work begins.
+Build198x is active. The flagship workspace is `../build198x/`; this repo holds design notes and documentation that are not specific to one crate.
 
-## Scope (eventually)
+## Scope
 
-- The asset-conversion, packing, and media-mastering tools, and the native formats each emits.
-- The program-framing handoff with Asm198x, and how mastered media is validated by loading in Emu198x.
-- The membership test that keeps the tool set coherent rather than a junk drawer.
+- Asset-conversion, packing, and media-mastering tools.
+- Native output formats emitted by Build198x tools.
+- The program-framing handoff with Asm198x.
+- Validation of mastered media by loading or checking output in Emu198x where appropriate.
+- The membership test that keeps the tool set coherent.
 
 ## Not here
 
-- The decision to pursue Build198x and its scope — the umbrella decision record `build198x-build-tools.md`.
-- The output-format model it inherits — Asm198x's `assemble-io-model.md`.
-- Hardware facts — the umbrella `reference/` library.
+- Binding umbrella scope: [`../../decisions/build198x-build-tools.md`](../../decisions/build198x-build-tools.md).
+- Hardware facts: the umbrella `reference/` library.
+- Emulator behaviour: `Emu198x/emu198x/`.
