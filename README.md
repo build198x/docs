@@ -12,6 +12,14 @@ Build198x is active. The flagship workspace is `../build198x/`; this repo holds 
 - Validation of mastered media by loading or checking output in Emu198x where appropriate.
 - The membership test that keeps the tool set coherent.
 
+## Design specs
+
+Feature design notes live in [`specs/`](specs/) — the shape of a tool or verb
+before it is built, and the record of decisions once it is. Current:
+
+- [ADF read verbs (`verify`, `info`)](specs/2026-07-10-adf-read-verbs.md)
+- [ADF `create` verb (general volume builder)](specs/2026-07-10-adf-create-verb.md)
+
 ## Not here
 
 - Binding umbrella scope: [`../../decisions/build198x-build-tools.md`](../../decisions/build198x-build-tools.md).
