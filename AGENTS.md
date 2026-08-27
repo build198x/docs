@@ -1,6 +1,8 @@
 # Build198x docs
 
-Documentation repo for Build198x. Part of the `build198x` org container; see [`../CLAUDE.md`](../CLAUDE.md) for org layout and [`../../CLAUDE.md`](../../CLAUDE.md) for the 198x umbrella.
+> Read [`PRINCIPLES.md`](PRINCIPLES.md) first.
+
+Documentation repo for Build198x. Part of the `build198x` org container; see [`../AGENTS.md`](../AGENTS.md) for org layout and [`../../AGENTS.md`](../../AGENTS.md) for the 198x umbrella.
 
 Build198x is active. The flagship workspace is `../build198x/`; this repo holds design notes and documentation that are not specific to one crate.
 
