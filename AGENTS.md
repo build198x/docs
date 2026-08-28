@@ -1,6 +1,6 @@
 # Build198x docs
 
-> Read [`PRINCIPLES.md`](PRINCIPLES.md) first.
+> Read [`PRINCIPLES.md`](PRINCIPLES.md) first. [`MANIFESTO.md`](MANIFESTO.md) is why the project exists.
 
 Documentation repo for Build198x. Part of the `build198x` org container; see [`../AGENTS.md`](../AGENTS.md) for org layout and [`../../AGENTS.md`](../../AGENTS.md) for the 198x umbrella.
 
