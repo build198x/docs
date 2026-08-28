@@ -22,6 +22,6 @@ before it is built, and the record of decisions once it is. Current:
 
 ## Not here
 
-- Binding umbrella scope: [`../../decisions/build198x-build-tools.md`](../../decisions/build198x-build-tools.md).
+- Binding umbrella scope: `198x/decisions/build198x-build-tools.md`.
 - Hardware facts: the umbrella `reference/` library.
 - Emulator behaviour: `Emu198x/emu198x/`.
