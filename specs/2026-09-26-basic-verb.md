@@ -166,7 +166,7 @@ Real programs, not invented ones:
 
 - **C64:** every one of the 86 code-samples C64 listings is tokenised by
   `build198x basic` and by VICE's `petcat`, and the PRGs must match byte for
-  byte. `petcat` is an independent implementation, so a mismatch is evidence.
+  byte. `petcat` is an independent implementation, so a mismatch is evidence. Where `petcat` and the C64 ROM disagree (the ROM stores `?` as PRINT; `petcat` does not), the ROM wins: the owner's rule is that the machine's own behaviour is the authority and tools are checks.
   A listing that petcat reads differently (a known dialect quirk) is recorded
   with the reason, not silently skipped.
 - **Spectrum lister against the ROM:** fixture programs cover every token in
