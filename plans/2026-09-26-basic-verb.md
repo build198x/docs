@@ -755,6 +755,8 @@ fn rules(m: Machine, src: &str) -> Vec<(usize, &'static str)> {
     // LIST shows these exactly as typed, so listing-form cannot see them.
     assert_eq!(rules(ZX, "  10 LET n = n + 1\n"), vec![(1, "stored-space"); 4]);
     assert!(rules(ZX, "  10 PRINT \"a = b\": REM x = y\n").is_empty());
+    // A space inside a numeric variable name is part of the name the ROM allows.
+    assert!(rules(ZX, "  10 LET my score=0\n").is_empty());
 }
 #[test] fn fix_rewrites_to_the_listed_form_and_is_idempotent() {
     let fixed = fix(ZX, "10 PRINT CHR$(147)\r\n20 IF a = 1 THEN STOP\n").unwrap().unwrap();
@@ -787,13 +789,13 @@ fn rules(m: Machine, src: &str) -> Vec<(usize, &'static str)> {
 
 - [ ] **Step 2: Implement `lint.rs`.** The rules:
   - **`listing-form`:** for each `(index, listed)` from the dialect's `listed_form(source)`, compare `listed.trim_end()` with the source line after `trim_end()`, stripping any `\r`. Report column 1 with the message `` LIST shows `{listed}` ``. The column is 1 because the whole line is compared.
-  - **`stored-space`** (Spectrum): every `Space` piece from `lex_line`. By Task 5, that means every space the ROM would store and show: outside strings and `REM`, not the one the ROM supplies next to a keyword. One finding per piece, at its column. Message: `a space here is stored and listed; the Spectrum's own display spacing needs none`. `fix` for the Spectrum drops these pieces before listing each line, so `fix` output passes both `stored-space` and `listing-form`. A Spectrum variable name containing a space (`my score`, which the ROM allows) loses the space; the ROM ignores spaces in names, so it is still the same variable.
+  - **`stored-space`** (Spectrum): a `Space` piece from `lex_line` that is *not* between two `Name` pieces. By Task 5, `Space` pieces are the spaces the ROM stores and lists, outside strings and `REM`, other than the one it supplies next to a keyword. A space between two name pieces is part of a numeric variable name, which the ROM allows and ignores when it looks the name up (`LET now we=6: PRINT nowwe` prints 6; Vickers, *ZX Spectrum BASIC Programming*, 1983, chapters 7 and 24). It is left alone. One finding per flagged piece, at its column. Message: `a space here is stored and listed; the Spectrum's own display spacing needs none`. For the Spectrum, `fix` drops the flagged pieces before listing each line, so its output passes both `stored-space` and `listing-form`.
   - **`string-var-name`** (Spectrum): for each line's `lex_line` pieces, a `Name` piece whose text ends in `$` and has more than two characters. Column = `body_column + piece.column + 1`. Message: `` string variables are one letter and $ (`a$`); the ROM rejects `{text}` ``.
   - **`keyword-var-name`** (Spectrum): a `Name` piece directly after a `LET`/`FOR`/`NEXT`/`INPUT`/`READ`/`DIM` keyword piece (codes `0xF1 0xEB 0xF3 0xEE 0xE3 0xE9`), ignoring `Space` pieces, whose uppercase text equals a keyword's name in `TOKENS`. Message: `` `{text}` is also a keyword; elsewhere in the program the tokeniser may store it as one ``. Export `TOKENS` from the Spectrum crate as `pub const KEYWORD_NAMES: [&str; 91]` if it isn't public. That is a patch release of the crate: add it in Part A Task 4 if you get there first.
   - **`var-name-clash`** (C64): collect `Name` pieces outside strings and REM. Key = the first two characters, uppercased, plus the type suffix (`$`, `%` or none). Report the first occurrence of each second or later distinct name with that key. Message: `` `{b}` is the same variable as `{a}`; BASIC V2 reads only the first two characters ``.
   - **`line-order`:** walk the lines in source order, tracking the highest number so far. A number equal to one already seen, or lower than the highest, is flagged at its line, column 1.
 
-  `check` returns `Err` only for a line the tokeniser cannot read, with the tokeniser's message. `fix` builds the new text from `listed_form` (Spectrum: after dropping `Space` pieces, as above): each listed line with its end trimmed, joined with `\n`, with a trailing `\n`. It returns `None` when that equals the source normalised the same way.
+  `check` returns `Err` only for a line the tokeniser cannot read, with the tokeniser's message. `fix` builds the new text from `listed_form` (Spectrum: after dropping the flagged `Space` pieces, as above): each listed line with its end trimmed, joined with `\n`, with a trailing `\n`. It returns `None` when that equals the source normalised the same way.
 
   In `main.rs`, `basic_lint(args)`:
   - takes `--machine`, one or more paths, `--fix` and `--format`;

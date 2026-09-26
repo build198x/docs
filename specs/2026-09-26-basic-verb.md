@@ -75,7 +75,7 @@ non-zero on any finding. The rules:
 | Rule | Machine | Catches |
 |---|---|---|
 | `listing-form` | both | a line that differs from its listed form; `--fix` rewrites it |
-| `stored-space` | Spectrum | a space outside strings and `REM` that the ROM stores and lists, such as `LET n = n + 1`; `--fix` removes it |
+| `stored-space` | Spectrum | a space outside strings and `REM` that the ROM stores and lists, such as `LET n = n + 1`; `--fix` removes it. A space inside a numeric variable name (`my score`), which the ROM allows and ignores, is left alone |
 | `string-var-name` | Spectrum | string variables longer than one letter (`name$`), which the ROM rejects |
 | `keyword-var-name` | Spectrum | a variable named like a keyword (`ink`), which the tokeniser can turn into a token |
 | `var-name-clash` | C64 | variables that share their first two characters and type (`SCORE`, `SCALE`), which BASIC V2 treats as one |
