@@ -1,6 +1,6 @@
 # `basic` verb: BASIC listings to loadable media
 
-**Status:** approved design, not yet built (2026-09-26).
+**Status:** approved design, not yet built (2026-09-26); amended the same day to add the lister, the lint rules and the canonical pass.
 **Scope:** a `build198x basic` subcommand that turns a plain-text BASIC listing
 into the file its machine loads, for the ZX Spectrum and the Commodore 64 first.
 It is built so that further BASICs can be added one at a time.
@@ -33,6 +33,8 @@ build198x basic <in.bas> --machine <id> -o <out> [options]
   --no-autorun       write a tape that loads without running (Spectrum; default:
                      auto-run from the program's first line)
   --format <text|json>  report format (default text)
+
+build198x basic lint <in.bas>... --machine <id> [--fix] [--format <text|json>]
 ```
 
 - **One machine, one BASIC.** `--machine` picks the machine; the BASIC and the
@@ -43,8 +45,46 @@ build198x basic <in.bas> --machine <id> -o <out> [options]
   `.prg` for the C64. A mismatch is an error, not a silent rename.
 - **Errors name the source line** (`in.bas:12: …`), using the line information
   the tokenisers already report, and exit non-zero without writing the output.
+- **Building lints first.** `basic` runs every lint rule before it writes
+  anything, so a Makefile cannot build a listing that fails lint.
 - **The JSON report** follows the `image` verb's shape: tool version, machine,
   input, output, program length, line count and autorun line.
+
+## The listed form and lint
+
+The source file is written exactly as the machine's LIST displays it, line by
+line; screen wrapping is ignored. This is the binding rule in Code198x
+`docs/specifications/unit.md`. The reader sees the same program on the page and
+in the emulator.
+
+Each dialect crate gains a lister, `list()`, that renders tokenised bytes the way
+the machine's LIST does. For the Spectrum that is the ROM's token printing
+(`PO-TOKENS`/`PO-SEARCH` in Logan and O'Hara's disassembly):
+
+- line numbers right-aligned in four columns;
+- a leading space before tokens from `OR` onwards whose first character is a
+  letter, unless the previous character printed was a space;
+- a trailing space after tokens ending in a letter or `$`, except `RND`,
+  `INKEY$` and `PI`.
+
+The C64 prints the stored characters with tokens expanded and adds nothing.
+
+`build198x basic lint` reports `file:line:column: rule: message` and exits
+non-zero on any finding. The rules:
+
+| Rule | Machine | Catches |
+|---|---|---|
+| `listing-form` | both | a line that differs from its listed form; `--fix` rewrites it |
+| `stored-space` | Spectrum | a space outside strings and `REM` that the ROM stores and lists, such as `LET n = n + 1`; `--fix` removes it |
+| `string-var-name` | Spectrum | string variables longer than one letter (`name$`), which the ROM rejects |
+| `keyword-var-name` | Spectrum | a variable named like a keyword (`ink`), which the tokeniser can turn into a token |
+| `var-name-clash` | C64 | variables that share their first two characters and type (`SCORE`, `SCALE`), which BASIC V2 treats as one |
+| `line-order` | both | duplicate or descending line numbers |
+
+The lint rules run on a positioned token stream: the tokeniser's pieces, each
+with its kind and its source column. That stream is the foundation for the
+parser and language server, the planned second sub-project. See *Not in this
+design*.
 
 ## Structure
 
@@ -71,6 +111,10 @@ to Format198x as `format198x-sinclair-zx-spectrum-bas` and
 `decisions/formats-graduate-to-their-own-projects.md`: Build198x is a consumer
 that is not the producer.
 
+- Each crate then gains `list()`, the positioned token stream, and (Spectrum)
+  a fix so that a source space before a keyword is dropped rather than stored.
+  The ROM supplies that space when it lists; storing it wastes a byte. These are
+  separate commits after the unchanged move.
 - The move takes code, tests and history notes, and gives each crate a README.
   They stay dependency-free and are published with release-plz like the other
   Format198x crates.
@@ -102,6 +146,12 @@ that is not the producer.
   lesson's `CodeFromFile` path decides which listing is the unit's program,
   because BASIC units use two folder layouts (`unit-NN/` and
   `teaching/unit-NN/`). The plan settles the list.
+- Before any Makefile lands, a one-off pass rewrites every Spectrum listing to
+  its listed form with `lint --fix`. Its safety check: each file's tokenised
+  bytes before and after may differ only by removed spaces outside strings,
+  `REM` and `DATA`. So no program's behaviour changes. The C64 listings are
+  checked the same way; they are expected to need nothing. Lesson prose that
+  quotes BASIC inline is corrected by hand to match.
 - Outputs are gitignored, as `*.tap` and `*.prg` already are. The 99 Spectrum
   tapes committed under `verification/` folders are evidence and are not
   touched.
@@ -118,6 +168,11 @@ Real programs, not invented ones:
   byte. `petcat` is an independent implementation, so a mismatch is evidence.
   A listing that petcat reads differently (a known dialect quirk) is recorded
   with the reason, not silently skipped.
+- **Spectrum lister against the ROM:** fixture programs cover every token in
+  leading- and trailing-space positions, plus a sample of real lesson lines. Each
+  is loaded into Emu198x with the genuine 48K ROM, `LIST` is run, and the screen
+  text is kept as the expected output. The lister's tests compare against those
+  captures, so the ROM, not our reading of it, is the authority.
 - **Spectrum:** there is no independent tokeniser installed. A handful of real
   lesson tapes (at least one per BASIC game) are loaded in the Emu198x headless
   runner and must reach their first screen, checked by reading the screen text.
@@ -128,6 +183,12 @@ Real programs, not invented ones:
   with the source line named and writes nothing.
 
 ## Not in this design
+
+- **The parser and language server.** That's the second sub-project, with its
+  own spec. It covers a lossless syntax tree per dialect, and LSP diagnostics,
+  hover, completion, jumping to line numbers and formatting. The same
+  diagnostics would go to the website's in-page BASIC editors as wasm. Where it
+  lives is for that spec to decide.
 
 - Detokenising (`.tap`/`.prg` back to text).
 - Other machines: VIC-20, BBC Micro, Electron, Atom and MSX have `basic/` folders
