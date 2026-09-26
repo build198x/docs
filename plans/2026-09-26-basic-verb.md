@@ -4,7 +4,7 @@
 
 **Goal:** Turn Spectrum and C64 BASIC listings into loadable `.tap`/`.prg` files, linted to be exactly what the machine's LIST shows, so every BASIC lesson can run its program in the browser.
 
-**Architecture:** Emu198x's two tokenisers graduate unchanged to Format198x. There each gains three things: a positioned token stream (`lex_line`), a lister (`list`) that follows the machine's LIST rules, and (Spectrum only) a fix so it stops storing the space before a keyword. Build198x adds a `basic` verb (build) and `basic lint` (six rules, `--fix`) on those crates. Code-samples then rewrites its listings to the listed form and gains a Makefile per BASIC lesson, which the website already stages for its run strips.
+**Architecture:** Emu198x's two tokenisers graduate unchanged to Format198x. There each gains three things: a positioned token stream (`lex_line`), a lister (`list`) that follows the machine's LIST rules, and (Spectrum only) a fix so it stops storing the space before a keyword. Build198x adds a `basic` verb (build) and `basic lint` (seven rules, `--fix`) on those crates. Code-samples then rewrites its listings to the listed form and gains a Makefile per BASIC lesson, which the website already stages for its run strips.
 
 **Tech Stack:** Rust 2024 (latest stable; `env -u RUSTUP_TOOLCHAIN cargo …`), release-plz, cargo-dist, bash Makefiles, Node 24 for the one-off ROM capture.
 
@@ -772,9 +772,17 @@ fn rules(m: Machine, src: &str) -> Vec<(usize, &'static str)> {
     assert!(rules(ZX, "  10 LET inky=2\n").is_empty());
 }
 #[test] fn c64_two_letter_clash() {
-    let found = rules(C64, "10 SCORE=1\n20 SCALE=2\n30 SC$=\"A\"\n");
+    // Names with no keyword inside them: SCORE would tokenise its OR.
+    let found = rules(C64, "10 SPEED=1\n20 SPIN=2\n30 SP$=\"A\"\n");
     assert_eq!(found, vec![(2, "var-name-clash")]);
     assert!(rules(C64, "10 print \"lower\"\n").is_empty());
+}
+#[test] fn c64_keyword_inside_a_name() {
+    // SCORE is stored as S C <OR> E; the C64 answers ?SYNTAX ERROR.
+    assert_eq!(rules(C64, "10 SCORE=1\n"), vec![(1, "keyword-in-name")]);
+    assert_eq!(rules(C64, "10 PRINT FORT\n"), vec![(1, "keyword-in-name")]);
+    assert!(rules(C64, "10 FOR I=1 TO 10:NEXT\n").is_empty());
+    assert!(rules(C64, "10 PRINT \"SCORE\"\n").is_empty());
 }
 #[test] fn line_order() {
     assert_eq!(rules(ZX, "  20 STOP\n  10 STOP\n  10 STOP\n"),
@@ -792,6 +800,7 @@ fn rules(m: Machine, src: &str) -> Vec<(usize, &'static str)> {
   - **`stored-space`** (Spectrum): a `Space` piece from `lex_line` that is *not* between two `Name` pieces. By Task 5, `Space` pieces are the spaces the ROM stores and lists, outside strings and `REM`, other than the one it supplies next to a keyword. A space between two name pieces is part of a numeric variable name, which the ROM allows and ignores when it looks the name up (`LET now we=6: PRINT nowwe` prints 6; Vickers, *ZX Spectrum BASIC Programming*, 1983, chapters 7 and 24). It is left alone. One finding per flagged piece, at its column. Message: `a space here is stored and listed; the Spectrum's own display spacing needs none`. For the Spectrum, `fix` drops the flagged pieces before listing each line, so its output passes both `stored-space` and `listing-form`.
   - **`string-var-name`** (Spectrum): for each line's `lex_line` pieces, a `Name` piece whose text ends in `$` and has more than two characters. Column = `body_column + piece.column + 1`. Message: `` string variables are one letter and $ (`a$`); the ROM rejects `{text}` ``.
   - **`keyword-var-name`** (Spectrum): a `Name` piece directly after a `LET`/`FOR`/`NEXT`/`INPUT`/`READ`/`DIM` keyword piece (codes `0xF1 0xEB 0xF3 0xEE 0xE3 0xE9`), ignoring `Space` pieces, whose uppercase text equals a keyword's name in `TOKENS`. Message: `` `{text}` is also a keyword; elsewhere in the program the tokeniser may store it as one ``. Export `TOKENS` from the Spectrum crate as `pub const KEYWORD_NAMES: [&str; 91]` if it isn't public. That is a patch release of the crate: add it in Part A Task 4 if you get there first.
+  - **`keyword-in-name`** (C64): a `Keyword` piece with a letter or digit `Name` piece directly before or after it and no `Space` or `Punct` between, outside strings and `REM`, where the keyword is not one that legitimately joins to a name in BASIC V2 (the functions and statements that take their argument without a separator are excluded only when followed by `(`, `$`-less digits for `GOTO`/`GOSUB`/`THEN` line numbers, or `=` — take the exclusions from the Programmer's Reference Guide, and pin each with a test). Report at the name's column. Message: `` `{name}` contains the keyword {KEYWORD}; BASIC V2 stores it as a token, so this is not the variable it looks like ``. The corpus rule of thumb: the 86 code-samples C64 listings must produce no false positives; any real finding in them is reported to the owner, not suppressed.
   - **`var-name-clash`** (C64): collect `Name` pieces outside strings and REM. Key = the first two characters, uppercased, plus the type suffix (`$`, `%` or none). Report the first occurrence of each second or later distinct name with that key. Message: `` `{b}` is the same variable as `{a}`; BASIC V2 reads only the first two characters ``.
   - **`line-order`:** walk the lines in source order, tracking the highest number so far. A number equal to one already seen, or lower than the highest, is flagged at its line, column 1.
 
@@ -816,9 +825,10 @@ Expected: PASS and clean. In `basic_cli.rs`, the Task 8 fixtures are already can
 git add crates/build198x/src/basic crates/build198x/src/main.rs crates/build198x/tests/basic_lint.rs crates/build198x/tests/basic_cli.rs
 git commit -m "feat: lint BASIC listings against what the machine lists, and refuse to build failures
 
-Six rules from real mistakes in Code198x's samples: the listed form
+Seven rules from real mistakes in Code198x's samples: the listed form
 and stored spaces (both with --fix), long Spectrum string names,
-keyword-named variables, C64 two-letter clashes, and line order."
+keyword-named variables, C64 keywords inside names, C64 two-letter
+clashes, and line order."
 ```
 
 ### Task 10: C64 corpus against petcat, docs, release
