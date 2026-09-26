@@ -78,7 +78,7 @@ non-zero on any finding. The rules:
 | `stored-space` | Spectrum | a space outside strings and `REM` that the ROM stores and lists, such as `LET n = n + 1`; `--fix` removes it. A space inside a numeric variable name (`my score`), which the ROM allows and ignores, is left alone |
 | `string-var-name` | Spectrum | string variables longer than one letter (`name$`), which the ROM rejects |
 | `keyword-var-name` | Spectrum | a variable named like a keyword (`ink`), which the tokeniser can turn into a token |
-| `keyword-in-name` | C64 | a variable name with a keyword inside it (`SCORE` holds `OR`, `FORT` holds `FOR`), which BASIC V2 turns into a token, so the line fails with ?SYNTAX ERROR or means something else |
+| `keyword-in-name` | C64 | a keyword with name letters on both sides (`SCORE` holds `OR`), which BASIC V2 turns into a token, so it is not one variable. One-sided contact (`FORI`, `PRINTA`) is ordinary unspaced BASIC V2 and is not flagged |
 | `var-name-clash` | C64 | variables that share their first two characters and type (`SCORE`, `SCALE`), which BASIC V2 treats as one |
 | `line-order` | both | duplicate or descending line numbers |
 
