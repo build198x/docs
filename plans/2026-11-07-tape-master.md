@@ -7,12 +7,13 @@
 **Agreed design (2026-11-07):**
 
 - By default the tool **generates** the loader, so it can check the load address, entry point and RAM limits itself. `--basic <loader.bas>` replaces it with an authored loader, which is checked by lint only. The tool never rewrites an authored loader.
+- `--machine` is required and names the system, as `basic --machine` does. Tape formats share an extension but nothing else (a C64 `.tap` is a pulse recording), so the code lives in `build198x::tape::sinclair_zx_spectrum`, and other machines join as siblings.
 - The worked consumer is **Meteor Storm** (Code198x, Spectrum assembly module 2), replacing Gloaming, which is being removed. Its `unit-36/Makefile` already joins loader, screen and game with `cat`, so it doubles as a byte-for-byte oracle.
 
 ## CLI
 
 ```
-build198x tape --code <code.bin> --load-address <decimal> -o <out.tap>
+build198x tape --machine sinclair-zx-spectrum --code <code.bin> --load-address <decimal> -o <out.tap>
                [--entry <decimal>]          # default: the load address
                [--screen <screen.scr>]      # default: a built-in test card
                [--basic <loader.bas>]       # replaces the generated loader
@@ -42,17 +43,17 @@ Written in the listed form (each line exactly as the ROM LISTs it) and linted li
   20 LOAD ""SCREEN$ 
   30 POKE 23739,111
   40 LOAD ""CODE 
-  50 RANDOMIZE USR entry
+  50 POKE 23739,244: RANDOMIZE USR entry
 ```
 
-`POKE 23739,111` stops the ROM printing "Bytes: name" over the loading screen when the CODE header arrives. Meteor Storm's authored loader uses it for the same reason. Task 1 confirms which system variable it changes, from the ROM disassembly in `reference/`, and cites it in the source.
+`POKE 23739,111` points the screen channel's output routine at `$096F`, the `RET` that ends the routine before SA-CONTRL (*The Complete Spectrum ROM Disassembly*). All ROM printing is discarded, so "Bytes: name" does not land on the loading screen when the CODE header arrives. Meteor Storm's authored loader does the same. The generated loader then puts back PRINT-OUT (`$09F4`, `POKE 23739,244`) before `USR`, so a program that prints through `RST $10` still works.
 
 ## Validation (generated loader)
 
 - The screen is exactly 6912 bytes; the code is 1 or more bytes.
 - `load + len` is at most 65536 (48K) or 32768 (16K).
 - The entry lies within `[load, load + len)`.
-- The code starts above the BASIC area: `load - 1` must clear the loader, its variables and the ROM's `CLEAR` margin. The ROM rejects `CLEAR n` when n is at or below STKEND + 50 ("RAMTOP no good"). Task 2 derives the exact floor from the ROM routine and pins it with a boundary test in Emu198x: one byte below the floor fails, the floor itself loads.
+- The code starts high enough for the loader to `CLEAR` and `LOAD` beneath it. **Measured:** with the 130-byte generated loader, CODE at 24040 loads and runs on the 48K ROM in Emu198x, and at 24039 the ROM stops with "4 Out of memory, 40:1". That is LOAD's free-space check (TEST-ROOM wants 80 spare bytes), not CLEAR's "RAMTOP no good". So the floor is the loader's end plus 155 bytes, pinned by a unit test.
 
 With `--basic`, the screen, extent and model checks still apply. The loader's `CLEAR` and `USR` belong to its author.
 
@@ -60,8 +61,8 @@ With `--basic`, the screen, extent and model checks still apply. The loader's `C
 
 Branch `feat/tape-master` in `Build198x/build198x`; one PR.
 
-1. **Library module** `crates/build198x/src/tape.rs`: `build(options) -> Result<Built, Error>` composes the three pairs, the generated loader and the validation above. Unit tests cover each refusal, the 16K/48K edges, and determinism (two builds are byte-identical).
-2. **`CLEAR` floor**: derive it from the ROM (*The Complete Spectrum ROM Disassembly*, CLEAR-RUN) and add a boundary test against the real ROM in Emu198x.
+1. **Library module** `crates/build198x/src/tape/sinclair_zx_spectrum.rs`: `build(options) -> Result<Built, Error>` composes the three pairs, the generated loader and the validation above. Unit tests cover each refusal, the 16K/48K edges, and determinism (two builds are byte-identical).
+2. **Load floor**: measure it against the real ROM in Emu198x (a binary search over load addresses), explain it from the ROM disassembly, and pin it in a unit test.
 3. **Test card**: a deterministic built-in SCREEN$ (attribute colour bars plus a pixel border), generated in code with no binary asset committed. Its bytes are pinned by a SHA-256 test.
 4. **CLI** `build198x tape` in `main.rs` with the flags above, and integration tests in `tests/tape_cli.rs` following `plus3_cli.rs`.
 5. **Committed example** under `examples/tape/`: a tiny program that changes the border, mastered with the test card. Its Makefile rebuilds the tape and compares it byte for byte.
